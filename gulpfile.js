@@ -86,8 +86,8 @@ exports.default = parallel(
   autoCompile,
   imgAvif,
   imageMin,
-  imgWebp,
-  imgSvg
+  imgWebp
+  // imgSvg
 );
 
 // const { src, dest, watch, series, parallel } = require('gulp');
