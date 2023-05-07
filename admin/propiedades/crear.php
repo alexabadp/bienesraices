@@ -4,9 +4,21 @@
 require '../../includes/config/database.php';
 $db = conectarDB();
 
+// Consultar para obtener los vendeddores
+$consulta = "SELECT * FROM vendedores;";
+$resultado = mysqli_query($db, $consulta);
+
 // Arreglo con mensajes de errores
 
 $errores = [];
+
+$titulo = '';
+$precio = '';
+$descripcion = '';
+$habitaciones = '';
+$wc = '';
+$estacionamiento = '';
+$vendedorId = '';
 
 // Ejecutar el código después de que el usuario envía el formulario
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -14,13 +26,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // var_dump($_POST);
     // echo "</pre>";
 
-    $titulo = $_POST['titulo'];
-    $precio = $_POST['precio'];
-    $descripcion = $_POST['descripcion'];
-    $habitaciones = $_POST['habitaciones'];
-    $wc = $_POST['wc'];
-    $estacionamiento = $_POST['estacionamiento'];
-    $vendedorId = $_POST['vendedor'];
+    // echo "<pre>";
+    // var_dump($_FILES);
+    // echo "</pre>";
+
+    $titulo = mysqli_real_escape_string($db, $_POST['titulo']);
+    $precio = mysqli_real_escape_string($db, $_POST['precio']);
+    $descripcion = mysqli_real_escape_string($db, $_POST['descripcion']);
+    $habitaciones = mysqli_real_escape_string($db, $_POST['habitaciones']);
+    $wc = mysqli_real_escape_string($db, $_POST['wc']);
+    $estacionamiento = mysqli_real_escape_string($db, $_POST['estacionamiento']);
+    $creado = date('Y/m/d');
+    $vendedorId = mysqli_real_escape_string($db, $_POST['vendedor']);
+
+    // Asignar files hacia una variable
+    $imagen = $_FILES['imagen'];
+
+    // var_dump($imagen['name']);
+
+    // exit;
 
     if (!$titulo) {
         $errores[] = "Debes añadir un título";
@@ -50,6 +74,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errores[] = 'Elige un vendedor';
     }
 
+    if (!$imagen['name'] || $imagen['error']) {
+        $errores[] = 'La imagen es obligatoria';
+    }
+
+    //Validar por tamaño ( 100 kb maximo )
+    $medida = 1000 * 100;
+
+    if ($imagen['size'] > $medida) {
+        $errores[] = 'La imagen es muy pesada';
+    }
+
     // echo "<pre>";
     // var_dump($errores);
     // echo "</pre>";
@@ -58,14 +93,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($errores)) {
 
         // Insertar en la base de datos
-        $query = " INSERT INTO propiedades (titulo, precio, descripcion, habitaciones, wc, estacionamiento, vendedorId) VALUES ('$titulo', '$precio', '$descripcion', '$habitaciones', '$wc', '$estacionamiento', '$vendedorId' ) ";
+        $query = " INSERT INTO propiedades (titulo, precio, descripcion, habitaciones, wc, estacionamiento, creado, vendedorId) VALUES ('$titulo', '$precio', '$descripcion', '$habitaciones', '$wc', '$estacionamiento', '$creado', '$vendedorId' ) ";
 
         // echo $query;
 
         $resultado = mysqli_query($db, $query);
 
         if ($resultado) {
-            echo 'Insertado correctamente';
+            // Redireccionar a un usuario
+            header('Location: /admin');
         }
     }
 }
@@ -85,34 +121,36 @@ incluirTemplate('header');
         </div>
     <?php endforeach; ?>
 
-    <form class="formulario" method="POST" action="/admin/propiedades/crear.php">
+    <form class="formulario" method="POST" action="/admin/propiedades/crear.php" enctype="multipart/form-data">
         <fieldset>
             <legend>Información General</legend>
 
             <label for="titulo">Título:</label>
-            <input type="text" id="titulo" name="titulo" placeholder="Títtulo Propiedad">
+            <input type="text" id="titulo" name="titulo" placeholder="Títtulo Propiedad" value="<?php echo $titulo ?>">
 
             <label for="titulo">Precio:</label>
-            <input type="number" id="precio" name="precio" placeholder="Precio Propiedad">
+            <input type="number" id="precio" name="precio" placeholder="Precio Propiedad" value="<?php echo $precio ?>">
 
             <label for="imagen">Imagen:</label>
-            <input type="file" id="imagen" name="imagen" aceept="image/jpge, image/png">
+            <input type="file" id="imagen" name="imagen" accept="image/jpge, image/png" name="imagen">
 
             <label for="descripcion">Descripción:</label>
-            <textarea id="descripcion" name="descripcion"></textarea>
+            <textarea id="descripcion" name="descripcion">
+            <?php echo $descripcion; ?>
+            </textarea>
         </fieldset>
 
         <fieldset>
             <legend>Información Propiedad</legend>
 
             <label for="habitaciones">Habitaciones:</label>
-            <input type="number" id="habitaciones" name="habitaciones" placeholder="Ej: 3" min="1" max="9">
+            <input type="number" id="habitaciones" name="habitaciones" placeholder="Ej: 3" min="1" max="9" value="<?php echo $habitaciones ?>">
 
             <label for="wc">Baños:</label>
-            <input type="number" id="wc" name="wc" placeholder="Ej: 3" min="1" max="9">
+            <input type="number" id="wc" name="wc" placeholder="Ej: 3" min="1" max="9" value="<?php echo $wc ?>">
 
             <label for="estacionamiento">Estacionamiento:</label>
-            <input type="number" id="estacionamiento" name="estacionamiento" placeholder="Ej: 3" min="1" max="9">
+            <input type="number" id="estacionamiento" name="estacionamiento" placeholder="Ej: 3" min="1" max="9" value="<?php echo $estacionamiento ?>">
 
         </fieldset>
 
@@ -120,9 +158,10 @@ incluirTemplate('header');
             <legend>Vendedor: </legend>
 
             <select name="vendedor">
-                <option value="" disabled selected>-- Seleccione --</option>
-                <option value="1">Juan</option>
-                <option value="2">Kare</option>
+                <option value="">-- Seleccione --</option>
+                <?php while ($vendedor = mysqli_fetch_assoc($resultado)) : ?>
+                    <option <?php echo $vendedorId === $vendedor['id'] ? 'selected' : ''; ?> value="<?php echo $vendedor['id']; ?>"><?php echo $vendedor['nombre'] . " " . $vendedor['apellido'] ?></option>
+                <?php endwhile; ?>
             </select>
         </fieldset>
 
